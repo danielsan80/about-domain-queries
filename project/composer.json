@@ -1,0 +1,28 @@
+{
+    "name": "dansan/about-domain-queries",
+    "description": "This is a dev blog post about Domain Queries",
+    "license": "CC0-1.0",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Dan\\": "src/Dan/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\Dan\\": "tests/Dan/"
+        }
+    },
+    "require": {
+        "php": ">=7.4",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "dansan/fixture-handler": "*",
+        "symfony/phpunit-bridge": "*",
+        "mockery/mockery": "^1.3"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
