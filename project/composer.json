@@ -15,7 +15,8 @@
     },
     "require": {
         "php": ">=7.4",
-        "ext-json": "*"
+        "ext-json": "*",
+        "ramsey/uuid": "^3.8"
     },
     "require-dev": {
         "dansan/fixture-handler": "*",

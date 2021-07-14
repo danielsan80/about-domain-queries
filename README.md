@@ -3,6 +3,47 @@
 ...e alla fine abbiamo scoperto le Domain Queries
 =================================================
 
+> **Nota:** Questo è un **post-for-dev**: parlerò in dettaglio di questo format e di come funziona in un altro post.
+
+Nel corso della mia vita professionale quello che forse mi ha dato più grattacapi è stata la persistenza dei dati
+su un database e ottenerli da esso successivamente.
+
+Cioè, è facile interagire con un database, ma la cosa diventa un po' più complicata quando vogliamo organizzare
+il nostro codice in modo da applicare le buone pratiche che ci permettono di astrarre i concetti e rendere
+il database utilizzato un *dettaglio implementativo*.
+
+Il dettame a cui mi riferisco è 
+> Il tuo codice dove essere agnostico rispetto al database. 
+
+Un ORM come Doctrine ci permette di astrarre il SQL e di usare linguaggio più agnostico, il DQL.
+
+Il DQL è simile al SQL ma parla a oggetti ignorando quale DBMS stiamo utilizzando:
+possiamo chiedere tutti gli oggetti di una certa classe e non tutti i record di una certa tabella.
+
+Inoltre abbiamo un QueryBuilder che ci permette di costruire o modificare una query con chiamate a metodi
+anziché manipolando una stringa.
+
+Tutto molto comodo, non dipendiamo più da un DBMS specifico, possiamo gestire tutti quelli **che Doctrine
+ci permette di gestire** e siamo nel dominio degli oggetti... però...
+
+Però ora dipendiamo da Doctrine che è una libreria esterna molto complessa e il problema rimane se
+vogliamo passare a un database che Doctrine non gestisce con la stessa interfaccia. 
+
+Un altro dettame che dovremmo seguire è
+> Il tuo codice non deve dipendere da qualcosa che non puoi sostituire o che non sei in grado di
+> mantenere personalmente
+ 
+... 
+
+
+
+
+
+---
+
+
+
+
 Se penso a come spiegare tutta la storia di come siamo arrivati a questa soluzione mi prende un po' di sconforto.
 
 Verrebbe un post lunghissimo e noioso che non ho voglia di scrivere e che voi non avreste voglia di leggere.
@@ -95,7 +136,7 @@ e vengono validati nell'implementazione del metodo sort.
 
 
 
-
+---
 
 
 
@@ -132,7 +173,7 @@ per le operazioni di lettura.
 
   
 
-  
+  ---
 
   
 
@@ -145,7 +186,7 @@ non sapevo neanche che volessero dire.
 Poi è venuta la separazione del modello da vista e controller con un componente che si occupava solo di tirare fuori
 i record dal DB, degli array associativi.
 
-Poi è venuto fuori che il codice doveva essere agnostico rispetto al database che su usava per memorizzare i dati:
+Poi è venuto fuori che il codice doveva essere agnostico rispetto al database che si usava per memorizzare i dati:
 MySql, Postgres, Sqlite o magari uno di quei nuovi db non relazionali, i No Sql, i documentali...
 
 Quindi sono arrivati gli ORM, o meglio è arrivato Doctrine e i record sono diventati entità e son venuti fuori
@@ -165,6 +206,8 @@ delle collezioni isolate in memoria e ho dovuto passare alle soft relation:
 sto parlando ad esempio dell'entità Node che non poteva avere il metodo `Node::getParent(): Node` ma che
 doveva avere il metodo `Node::getParentId(): NodeId`.
 
+
+---
 
 ### Concetti
 
