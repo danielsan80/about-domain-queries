@@ -1,0 +1,32 @@
+nodes:
+    code:
+        label: Code
+    anagraphic:
+        label: anagraphic
+        children:
+            name:
+                label: Name
+            lastname:
+                label: Lastname
+            active:
+                label: Active
+    items:
+        label: Items
+        children:
+            item:
+                label: Item
+                children:
+                    item_name:
+                        label: Name
+                    item_enabled:
+                        label: Enabled
+                    item_keywords:
+                        label: Keywords
+                        children:
+                            item_keyword:
+                                label: Keyword
+    tags:
+        label: Tags
+        children:
+            tag:
+                label: Tag
