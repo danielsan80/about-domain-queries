@@ -2,8 +2,187 @@
 
 ...e alla fine abbiamo scoperto le Domain Queries
 =================================================
+## Introduzione
 
-> **Nota:** Questo è un **post-for-dev**: parlerò in dettaglio di questo format e di come funziona in un altro post.
+**tags**: `dev-post` `ddd` `php` `cqrs`
+> **Nota:** Questo è un **dev-post**
+
+Questo post contiene oltre che questo testo anche del codice eseguibile.
+
+Non è necessario eseguirlo ma in caso voleste farlo servono solo
+Git, Docker e Docker Compose.
+
+Dopo aver clonato il repository Git ed esserci entrato con
+
+```
+git clone git@github.com:danielsan80/about-domain-queries.git
+cd about-domain-queries
+```
+eseguite una
+```
+docker-compose up
+```
+il che dopo aver scaricato le immagini necessarie avvierà il container
+lanciando i test con PhpUnit, rilasciando il controllo a test terminati.
+
+Sotto il namespace `Dan\Daneel` c'è il codice di esempio principale.
+
+Eventuali altri namespace (`Dan\Golan`, `Dan\Hari`, `Dan\Salvor`, ...)
+c'è il codice rifattorizzato o delle varianti.
+
+
+## Il Repository pattern
+Partiamo dalla [definizione di Repository](https://martinfowler.com/eaaCatalog/repository.html) presente su [martinfowler.com](martinfowler.com):
+
+> Il Repository media tra il dominio e i Data Mapping layer usando
+una collection-like interface per accedere agli oggetti di dominio.
+ 
+Successivamente leggiamo che, più specificamente, un repository
+dovrebbe agire come se fosse una collezione di oggetti in memoria.
+
+Quindi l'interfaccia di un repository dovrebbe prevedere i metodi per aggiungere e
+rimuovere oggetti alla collezione ma anche i metodi per poterla interrogare.
+
+Nell'esempio si parla di un "Criteria" precedentemente costruito e configurato
+che viene inviato al repository affinché restituisca la giusta collezione di oggetti.
+
+Io e i miei colleghi abbiamo cercato di applicare questo pattern ai nostri progetti
+e le soluzioni che abbiamo implementato si sono evolute di progetto in progetto
+fino a che abbiamo raggiunto l'attuale grado di consapevolezza.
+
+## Fissiamo alcuni punti
+
+**Un repository gestisce una collezione di oggetti dello stesso tipo**
+
+Ad esempio quindi il `NodeRepository` conterrà solo oggetti di tipo `Node`.
+
+Non mi sembra che nell'articolo di Fowler ci sia questa precisazione e forse
+potrebbe sembrare ovvia ma dai database documentali è possibile ottenere
+documenti eterogenei e magari si potrebbe pensare la stessa cosa di un repository.
+
+**Un repository a livello di dominio è solo un'interfaccia**
+
+Ad esempio quindi potremmo avere l'interfaccia `NodeRepository`
+
+**l'interfaccia di un repository viene implementata a livello infrastrutturale attraverso un adapter
+  per una certa tecnologia**
+
+Per l'interfaccia NodeRepository potremmo quindi avere le implementazioni concrete
+`MysqlNodeRepository`, `MongoNodeRepository`, `InMemoryRepository`, ...
+che persistono su e ottengono da una tecnologia target la collezione di `Node` 
+
+**Gli oggetti di dominio devono essere modellati in modo che le relazioni tra di loro siano gestite
+attraverso i loro id.**
+
+ma sarà necessario fare `$nodeRepository->byId($node->parentId())->code()`.
+
+Non vogliamo poter navigare le relazioni come ad esempio è possibile fare con Doctrine.
+
+## CQRS
+
+Siccome ultimamente siamo stati contaminato dal CQRS, ha cominciato a suonarci male
+l'idea che un repository si occupi sia della scrittura che della lettura degli oggetti in collezione
+(beh, oltre che a suonarci male ci ha anche dato qualche problema reale).
+
+Comunque siamo arrivati alla conclusione che l'interfaccia dei Repository andasse spezzata in due:
+quella di scrittura e quella di lettura
+
+Forse abbiamo sbagliato ma l'interfaccia per modificare la collezione abbiamo continuato a chiamarla `Repository`
+mentre quella per la sola lettura l'abbiamo chiamata `Provider`.
+
+Ad esempio quindi avremo un `NodeRepository` con i metodi per aggiungere e rimuovere i `Node` alla
+collezione ed un `NodeProvider` con i metodi per ottenere uno specifico `Node` o un sottoinsieme della collezione
+gestita dal repository.
+
+## Il Dominio
+
+Ho menzionato già troppe volte il `NodeRepository` e le sue varie declinazioni senza dire cos'è un
+`Node` nel dominio che sto utilizzando come esempio:
+
+>Abbiamo una collezione di `Node` che rappresentano i nodi di un albero. Un `Node`
+può avere un `parent` oppure no, in questo secondo caso sarà un nodo radice (e quindi idealmente figlio di
+un ipotetico `RootNode`). 
+Un `Node` ha 0:n figli, ossia tutti quelli che lo hanno come `parent`.
+Un `Node` è identificabile oltre che dal proprio `id` anche da un `code` (con alcuni vincoli).
+Un `Node` ha una `label` che lo descrive in linguaggio naturale e una `position` per poterlo eventualmente
+ordinare rispetto ai suoi fratelli.
+
+## Hands on
+
+Per proseguire ora ho bisogno di un po' di codice.
+
+In `/project/src` possiamo trovare il codice sorgente di esempio mentre in `/project/tests` il codice di test.
+
+In `Dan\Daneel\Node\Domain` c'è il codice di dominio del contesto `Node` della versione `Daneel`.
+
+Proseguendo in `Node` troviamo il codice del sottocontesto `Node` e in particolare in `Model`
+c'è tutto il codice relativo al modello del `Node`.
+
+La classe `Dan\Daneel\Node\Domain\Node\Model\Node` è la nostra entità `Node` di esempio che ha le caratteristiche
+precedentemente descritte.
+
+L'interfaccia `Dan\Daneel\Node\Domain\Node\Model\Repository\NodeRepository` non verrà usata in questo esempio
+poiché ci concentreremo sulla lettura, per cui non vi è alcuna sua implementazione. In realtà non è necessario avere
+sempre un repository se il nostro modulo prevede solo la lettura.
+
+L'interfaccia `Dan\Daneel\Node\Domain\Node\Model\Provider\NodeProvider` ha appena 3 metodi, 2 per ottenere
+esattamente un `node` e solo un altro per ottenere una sottocollezione di `Node`.
+Quest'ultimo metodo come avrete intuito è quello che ci interessa maggiormente per l'argomento trattato ma ci
+torneremo in seguito.
+
+Abbiamo due value object `Dan\Daneel\Node\Domain\Node\Model\Code\Code` e `Dan\Daneel\Node\Domain\Node\Model\Id\NodeId`
+da cui dipende `Node`, il primo per vincolare il `code` del `Node` a rispettare alcune regole e il secondo per definire
+l'`id` del `Node` al fine di vincolarlo a contenere uno `uuid` e soprattutto per avere un riferimento
+fortemente tipizzato.
+
+Potrebbe lasciare un po' perplessi il namespace `Dan\Daneel\Node\Domain\Node\Model\Provider\Infrastructure` perché
+non ci aspettavamo di trovare la keyword `Infratracture` dentro a `Domain`. In realtà questo è un escamotage per tenere
+il codice infrastrutturale vicino a quello a cui si riferisce e rendendone più semplice la ricerca tramite navigazione
+via File System.
+In pratica usiamo la keyword `Infrastructure` in `append mode` creando isole di codice infrastrutturale dove serve. 
+La stessa cosa viene fatta con la keyword `Testing` con la quale creiamo isole di codice utile ai test
+(sia in `src` che in `test`).
+Questo viola la separazione in layer `Domain`, `Application`, `Infrastructure`, `<Port>`, ... tipica del DDD?
+Io non credo, perché questa separazione dovrebbe avvenire per forza a livello di file system?
+In questo modo è anche possibile spostare il codice infrastrutturale in un package composer separato qualora fosse
+necessario.
+Nulla poi vieta di spostare il codice da `Dan\Daneel\Node\Domain\Node\Model\Provider\Infrastructure`
+a `Dan\Daneel\Node\Infrastructure\Domain\Node\Model\Provider` di fatto senza violare la regola dell'`append mode`
+suddetta.
+
+In `Dan\Daneel\Node\Domain\Node\Model\Provider\Infrastructure\InMemory\InMemoryNodeProvider` troviamo l'implementazione
+infrastrutturale del `NodeProvider` per la tecnologia target `InMemory`.
+In `append mode`, dopo aver appeso `Infrastructure` al namespace viene appesa una keyword che identifichi
+la tecnologia target seguendo il pattern `**\Infrastructure\**\<TargetTecnology>\**\<Implementation>`
+dove `<Implementation>` è in genere composto da `<TargetTecnology><TargetIterface>` ma non necessariamente.
+
+In questo caso implementiamo un provider che legge i `Node` da un array in memoria passato nel suo costruttore.
+Questa implementazione non verrà mai usata in produzione (tant'è che forse dovrebbe stare in `Testing` anziché
+in `Infrastructure`) ma è utile per descrivere in dettaglio, molto più di quanto possa fare
+l'interfaccia `NodeProvider`, come si devono comportare le altre implementazioni di `NodeProvider`. 
+
+Eh si perché in `Dan\Daneel\Node\Domain\Node\Model\Provider\Testing\NodeProviderTestCase` proviamo ad usare
+un generico `NodeProvider` e in
+`Tests\Dan\Daneel\Node\Domain\Node\Model\Provider\Infrastructure\InMemory\InMemoryNodeProviderTest`, che estende il
+`NodeProviderTestCase` eseguiamo i test sull'`InMemoryProvider` accertandoci che si comporti come ci aspettiamo.
+Per la proprietà transitiva avremo la "certezza" che ogni altro `NodeProvider` che venga testato estendendo
+il `NodeProviderTestCase` si comporti "esattamente" come l'`InMemoryNodeProvider`. 
+"certezza" e "esattamente" (tra virgolette) perché dipende da quanto profondamente il `NodeProviderTestCase` copre
+tutti i casi possibili.
+
+
+
+
+
+
+
+
+
+...
+
+
+
+-----
 
 Nel corso della mia vita professionale quello che forse mi ha dato più grattacapi è stata la persistenza dei dati
 su un database e ottenerli da esso successivamente.
@@ -13,7 +192,7 @@ il nostro codice in modo da applicare le buone pratiche che ci permettono di ast
 il database utilizzato un *dettaglio implementativo*.
 
 Il dettame a cui mi riferisco è 
-> Il tuo codice dove essere agnostico rispetto al database. 
+> Il tuo codice deve essere agnostico rispetto al database. 
 
 Un ORM come Doctrine ci permette di astrarre il SQL e di usare linguaggio più agnostico, il DQL.
 
