@@ -2,14 +2,15 @@
 
 ...e alla fine abbiamo scoperto le Domain Queries
 =================================================
+
 ## Introduzione
 
 **tags**: `dev-post` `ddd` `php` `cqrs`
-> **Nota:** Questo è un **dev-post**
+> **Nota:** Questo è un **dev-post**. 
+Questo post contiene oltre che questo testo anche del codice eseguibile che in realtà il vero post
+mentre questo è solo un commento ad esso.
 
-Questo post contiene oltre che questo testo anche del codice eseguibile.
-
-Non è necessario eseguirlo ma in caso voleste farlo servono solo
+Non è necessario eseguire il codice ma in caso voleste farlo servono solo
 Git, Docker e Docker Compose.
 
 Dopo aver clonato il repository Git ed esserci entrato con
@@ -28,8 +29,43 @@ lanciando i test con PhpUnit, rilasciando il controllo a test terminati.
 Sotto il namespace `Dan\Daneel` c'è il codice di esempio principale.
 
 Eventuali altri namespace (`Dan\Golan`, `Dan\Hari`, `Dan\Salvor`, ...)
-c'è il codice rifattorizzato o delle varianti.
+contengono il codice rifattorizzato o delle varianti.
 
+# La Query
+
+Questo dovrebbe permetterci di andare subito al punto:
+
+```
+$children = $nodeProvider->byQuery(
+    NodeQuery::create()
+        ->sort(NodeQuery::POSITION, NodeQuery::ASC)
+        ->slice(0, 100)
+        ->setParentId((string)$parent->id())
+);
+```
+
+Qui abbiamo un `NodeProvider` al quale chiediamo di darci una sottocollezione di `Node`
+chiamando il metodo `byQuery(?NodeQuery $query): array`
+
+> in particolare gli stiamo chiedendo "Dammi un blocco di 100 `Node` figli di `$parent`, ordinati per posizione".
+
+Per specificare i criteri che il `NodeProvider` deve considerare per comporre la sottocollezione di cui
+abbiamo bisogno usiamo una `NodeQuery`.
+
+`NodeQuery` limita i criteri che possiamo specificare facendo sì che la query risultante copra solo quelli
+che hanno senso nel nostro dominio, escludendo i casi non gestiti.
+
+Al contrario un generico metodo `findBy(array $criteria): array` costringerebbe il `NodeProvider` a validare
+il contenuto di `$criteria` mentre così viene fatta nella costruzione della `NodeQuery`.
+
+`NodeQuery` è un value object immutabile che per la sua costruzione mette a disposizione
+un'interfaccia fluida.
+
+`NodeQuery` incapsula il concetto di query specifica per i `Node`, una query di dominio appunto.
+
+> `$query = NodeQuery::create();` significa "Dammi tutti i nodi, l'ordine non mi interessa".
+
+Per comprendere alcuni aspetti che forse lascino un po' perplessi facciamo un passo indietro...
 
 ## Il Repository pattern
 Partiamo dalla [definizione di Repository](https://martinfowler.com/eaaCatalog/repository.html) presente su [martinfowler.com](martinfowler.com):
@@ -67,20 +103,21 @@ Ad esempio quindi potremmo avere l'interfaccia `NodeRepository`
 **l'interfaccia di un repository viene implementata a livello infrastrutturale attraverso un adapter
   per una certa tecnologia**
 
-Per l'interfaccia NodeRepository potremmo quindi avere le implementazioni concrete
+Per l'interfaccia `NodeRepository` potremmo quindi avere le implementazioni concrete
 `MysqlNodeRepository`, `MongoNodeRepository`, `InMemoryRepository`, ...
-che persistono su e ottengono da una tecnologia target la collezione di `Node` 
+che persistono su, e ottengono da, una tecnologia target la collezione di `Node` 
 
 **Gli oggetti di dominio devono essere modellati in modo che le relazioni tra di loro siano gestite
 attraverso i loro id.**
 
+Non sarà possibile quindi fare `$node->parent()->code()`.
 ma sarà necessario fare `$nodeRepository->byId($node->parentId())->code()`.
 
-Non vogliamo poter navigare le relazioni come ad esempio è possibile fare con Doctrine.
+In altre parole non vogliamo poter navigare le relazioni come ad esempio è possibile fare con Doctrine.
 
 ## CQRS
 
-Siccome ultimamente siamo stati contaminato dal CQRS, ha cominciato a suonarci male
+Siccome ultimamente siamo stati contaminati dalle logiche del CQRS, ha cominciato a suonarci male
 l'idea che un repository si occupi sia della scrittura che della lettura degli oggetti in collezione
 (beh, oltre che a suonarci male ci ha anche dato qualche problema reale).
 
@@ -99,17 +136,25 @@ gestita dal repository.
 Ho menzionato già troppe volte il `NodeRepository` e le sue varie declinazioni senza dire cos'è un
 `Node` nel dominio che sto utilizzando come esempio:
 
->Abbiamo una collezione di `Node` che rappresentano i nodi di un albero. Un `Node`
-può avere un `parent` oppure no, in questo secondo caso sarà un nodo radice (e quindi idealmente figlio di
-un ipotetico `RootNode`). 
-Un `Node` ha 0:n figli, ossia tutti quelli che lo hanno come `parent`.
-Un `Node` è identificabile oltre che dal proprio `id` anche da un `code` (con alcuni vincoli).
-Un `Node` ha una `label` che lo descrive in linguaggio naturale e una `position` per poterlo eventualmente
-ordinare rispetto ai suoi fratelli.
+>Abbiamo una collezione di `Node` che rappresentano i nodi di un albero.
+> 
+> Un `Node`
+> può avere un `parent` oppure no, in questo secondo caso sarà un nodo radice (e quindi idealmente figlio di
+> un ipotetico `RootNode`).
+> 
+> Un `Node` ha 0:n figli, ossia tutti quelli che lo hanno come `parent`.
+> 
+> Un `Node` è identificabile oltre che dal proprio `id` anche da un `code` (con alcuni vincoli).
+> 
+> Un `Node` ha una `label` che lo descrive in linguaggio naturale e una `position` per poterlo eventualmente
+> ordinare rispetto ai suoi fratelli.
 
-## Hands on
+## Il Codice
 
 Per proseguire ora ho bisogno di un po' di codice.
+
+> Questa parte descrive la struttura delle directory e la funzione delle classi quindi credo
+che possa essere **saltata** per tornarci eventualmente qualora qualcosa non fosse chiaro. 
 
 In `/project/src` possiamo trovare il codice sorgente di esempio mentre in `/project/tests` il codice di test.
 
@@ -169,12 +214,6 @@ Per la proprietà transitiva avremo la "certezza" che ogni altro `NodeProvider` 
 il `NodeProviderTestCase` si comporti "esattamente" come l'`InMemoryNodeProvider`. 
 "certezza" e "esattamente" (tra virgolette) perché dipende da quanto profondamente il `NodeProviderTestCase` copre
 tutti i casi possibili.
-
-
-
-
-
-
 
 
 
