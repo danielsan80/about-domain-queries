@@ -13,7 +13,7 @@ questo testo è più un commento al codice.
 Non è necessario eseguire il codice ma in caso voleste farlo servono solo
 Git, Docker e Docker Compose.
 
-Dopo aver clonato il repository Git ed esserci entrato con
+Dopo aver clonato il repository Git ed esserci entrati con
 
 ```
 git clone git@github.com:danielsan80/about-domain-queries.git
@@ -109,7 +109,7 @@ e se vogliamo permettere l'ordinamento decrescente o meno.
 
 Notificheremo al dev tramite un'eccezione se sta cercando di utilizzare impropriamente questo metodo.   
 
-In questo esempio abbiamo decido che i `Node` possono essere ordinati per `position` o per `label`,
+In questo esempio abbiamo deciso che i `Node` possono essere ordinati per `position` o per `label`,
 sia in ordine crescente che decrescente.
 
 ### ->slice(0, 100)
@@ -124,9 +124,9 @@ a livello di dominio.
 Il metodo `slice` permette di selezionare un chunk del risultato della query, specificando l'offset (`start`)
 e quanti elementi ritornare da lì in poi (`length`).
 
-Un'implementazione alternativa (o ulteriore) del concetto di slicing potrebbe essere quella di passare il `NodeId`,
-da cui partire e il numero di `Node` da ritornare, dato che è più performante quando c'è di mezzo un B-tree
-(e alla fine c'è sempre).
+Un'implementazione alternativa (o ulteriore) del concetto di slicing potrebbe essere quella di passare una sorta
+di `last_key` da cui partire (dipendente dall'ordinamento selezionato) e il numero di `Node` da ritornare,
+dato che è più performante quando c'è di mezzo un B-tree (e alla fine c'è sempre).
 
 ### ->setParentId((string)$parent->id())
 
@@ -157,7 +157,6 @@ dopo aver rimosso un eventuale filtro sul brand (`$brandQuery = $productQuery->r
 Comunque una volta che abbiamo un oggetto che rappresenta una query di dominio valida il lavoro che resta da fare
 in un provider per convertirla in una query Sql, in una query Mongo o Mango, o applicarla ad un array in memoria
 è un gioco da ragazzi.
-
 
 ## Il Provider
 
